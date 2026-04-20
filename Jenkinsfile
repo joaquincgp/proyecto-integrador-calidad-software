@@ -16,6 +16,7 @@ pipeline {
         SERVIDOR_SONARQUBE = 'SonarQubeCloud'
         CLAVE_PROYECTO_SONAR = 'Mattair39_ProyectoIntegrador-CalidadDeSoftware'
         NOMBRE_PROYECTO_SONAR = 'ProyectoIntegrador-CalidadDeSoftware'
+        ORGANIZACION_SONAR = 'mattair39'
     }
 
     stages {
@@ -104,7 +105,7 @@ pipeline {
             steps {
                 echo 'Ejecutando análisis SonarQube...'
                 withSonarQubeEnv("${SERVIDOR_SONARQUBE}") {
-                    bat "mvn -B sonar:sonar -Dsonar.projectKey=${CLAVE_PROYECTO_SONAR} -Dsonar.projectName=${NOMBRE_PROYECTO_SONAR}"
+                    bat "mvn -B sonar:sonar -Dsonar.projectKey=${CLAVE_PROYECTO_SONAR} -Dsonar.projectName=${NOMBRE_PROYECTO_SONAR} -Dsonar.organization=${ORGANIZACION_SONAR}"
                 }
                 echo 'Análisis SonarQube enviado correctamente.'
             }
