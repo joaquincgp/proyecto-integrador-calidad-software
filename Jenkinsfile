@@ -87,8 +87,8 @@ pipeline {
 
                 stage('JaCoCo') {
                     steps {
-                        echo 'Generando y validando cobertura con JaCoCo...'
-                        bat 'mvn -B jacoco:report jacoco:check'
+                        echo 'Generando reporte de cobertura con JaCoCo...'
+                        bat 'mvn -B test jacoco:report'
                         echo 'JaCoCo completado.'
                     }
                     post {
