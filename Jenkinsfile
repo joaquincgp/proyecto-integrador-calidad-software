@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven'
+    }
+
     options {
         disableConcurrentBuilds()
         timestamps()
@@ -9,9 +13,9 @@ pipeline {
 
     environment {
         MAVEN_OPTS = '-Djava.awt.headless=true'
-        SONARQUBE_SERVER = 'SonarQubeCloud'
-        SONAR_PROJECT_KEY = 'Mattair39_ProyectoIntegrador-CalidadDeSoftware'
-        SONAR_PROJECT_NAME = 'ProyectoIntegrador-CalidadDeSoftware'
+        SERVIDOR_SONARQUBE = 'SonarQubeCloud'
+        CLAVE_PROYECTO_SONAR = 'Mattair39_ProyectoIntegrador-CalidadDeSoftware'
+        NOMBRE_PROYECTO_SONAR = 'ProyectoIntegrador-CalidadDeSoftware'
     }
 
     stages {
@@ -57,7 +61,7 @@ pipeline {
             parallel {
                 stage('Checkstyle') {
                     steps {
-                        echo 'Ejecutando Checkstyle...'
+                        echo 'Ejecutando análisis de estilo con Checkstyle...'
                         bat 'mvn -B checkstyle:check'
                         echo 'Checkstyle completado.'
                     }
@@ -70,7 +74,7 @@ pipeline {
 
                 stage('PMD') {
                     steps {
-                        echo 'Ejecutando PMD...'
+                        echo 'Ejecutando análisis estático con PMD...'
                         bat 'mvn -B pmd:check'
                         echo 'PMD completado.'
                     }
@@ -99,8 +103,8 @@ pipeline {
         stage('Análisis SonarQube') {
             steps {
                 echo 'Ejecutando análisis SonarQube...'
-                withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    bat "mvn -B sonar:sonar -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.projectName=${SONAR_PROJECT_NAME}"
+                withSonarQubeEnv("${SERVIDOR_SONARQUBE}") {
+                    bat "mvn -B sonar:sonar -Dsonar.projectKey=${CLAVE_PROYECTO_SONAR} -Dsonar.projectName=${NOMBRE_PROYECTO_SONAR}"
                 }
                 echo 'Análisis SonarQube enviado correctamente.'
             }
