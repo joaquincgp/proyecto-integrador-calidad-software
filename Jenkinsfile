@@ -19,6 +19,7 @@ pipeline {
         ORGANIZACION_SONAR = 'mattair39'
     }
 
+    stages {
         stage('Checkout') {
             steps {
                 git(
