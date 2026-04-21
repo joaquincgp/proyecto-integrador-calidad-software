@@ -19,10 +19,13 @@ pipeline {
         ORGANIZACION_SONAR = 'mattair39'
     }
 
-    stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git(
+                    url: 'https://github.com/Mattair39/ProyectoIntegrador-CalidadDeSoftware.git',
+                    branch: env.BRANCH_NAME,
+                    credentialsId: 'github-token-auth'
+                )
                 echo "Repositorio clonado correctamente desde la rama ${env.BRANCH_NAME}."
             }
         }
