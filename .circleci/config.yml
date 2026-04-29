@@ -15,13 +15,15 @@ executors:
       - image: cimg/openjdk:17.0
     environment:
       MAVEN_OPTS: "-Djava.awt.headless=true"
+      # ── SonarCloud (comentado hasta configurar SONAR_TOKEN) ────────────
       # Mismas credenciales que el Jenkinsfile
-      SONAR_PROJECT_KEY: "Mattair39_ProyectoIntegrador-CalidadDeSoftware"
-      SONAR_PROJECT_NAME: "ProyectoIntegrador-CalidadDeSoftware"
-      SONAR_ORGANIZATION: "mattair39"
-      SONAR_HOST_URL: "https://sonarcloud.io"
+      # SONAR_PROJECT_KEY: "Mattair39_ProyectoIntegrador-CalidadDeSoftware"
+      # SONAR_PROJECT_NAME: "ProyectoIntegrador-CalidadDeSoftware"
+      # SONAR_ORGANIZATION: "mattair39"
+      # SONAR_HOST_URL: "https://sonarcloud.io"
       # Servidor SonarQube referenciado en Jenkins como 'SonarQubeCloud'
-      SERVIDOR_SONARQUBE: "SonarQubeCloud"
+      # SERVIDOR_SONARQUBE: "SonarQubeCloud"
+      # ───────────────────────────────────────────────────────────────────
 
 # ──────────────────────────────────────────────
 # Trabajos (equivalentes a los stages de Jenkins)
@@ -150,29 +152,29 @@ jobs:
           path: target/site/jacoco
           destination: jacoco
 
-  # ── 5. Análisis SonarQube / SonarCloud ────────
-  sonarcloud:
-    executor: java-executor
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - maven-{{ checksum "pom.xml" }}
-            - maven-
-      - run:
-          name: "Análisis SonarCloud (servidor: SonarQubeCloud)"
-          command: |
-            echo "Ejecutando análisis SonarCloud..."
-            # Equivalente Jenkins: withSonarQubeEnv('SonarQubeCloud')
-            # con -Dsonar.projectKey=Mattair39_ProyectoIntegrador-CalidadDeSoftware
-            #     -Dsonar.organization=mattair39
-            mvn -B sonar:sonar \
-              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-              -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
-              -Dsonar.organization=${SONAR_ORGANIZATION} \
-              -Dsonar.host.url=${SONAR_HOST_URL} \
-              -Dsonar.token=${SONAR_TOKEN}
-            echo "Análisis SonarCloud enviado correctamente."
+  # ── 5. Análisis SonarQube / SonarCloud (comentado hasta configurar SONAR_TOKEN) ──
+  # sonarcloud:
+  #   executor: java-executor
+  #   steps:
+  #     - checkout
+  #     - restore_cache:
+  #         keys:
+  #           - maven-{{ checksum "pom.xml" }}
+  #           - maven-
+  #     - run:
+  #         name: "Análisis SonarCloud (servidor: SonarQubeCloud)"
+  #         command: |
+  #           echo "Ejecutando análisis SonarCloud..."
+  #           # Equivalente Jenkins: withSonarQubeEnv('SonarQubeCloud')
+  #           # con -Dsonar.projectKey=Mattair39_ProyectoIntegrador-CalidadDeSoftware
+  #           #     -Dsonar.organization=mattair39
+  #           mvn -B sonar:sonar \
+  #             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+  #             -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
+  #             -Dsonar.organization=${SONAR_ORGANIZATION} \
+  #             -Dsonar.host.url=${SONAR_HOST_URL} \
+  #             -Dsonar.token=${SONAR_TOKEN}
+  #           echo "Análisis SonarCloud enviado correctamente."
 
   # ── 6. Package (solo rama main) ───────────────
   package:
@@ -242,12 +244,12 @@ workflows:
       - jacoco:
           requires:
             - tests-unitarios
-      - sonarcloud:
-          requires:
-            - checkstyle
-            - pmd
-            - jacoco
-          context: sonarcloud
+      # - sonarcloud:          # comentado hasta configurar SONAR_TOKEN
+      #     requires:
+      #       - checkstyle
+      #       - pmd
+      #       - jacoco
+      #     context: sonarcloud
 
   # ── Pipeline completo para la rama main (CI + Package + Deploy) ──
   ci-cd-main:
@@ -270,15 +272,15 @@ workflows:
       - jacoco:
           requires:
             - tests-unitarios
-      - sonarcloud:
-          requires:
-            - checkstyle
-            - pmd
-            - jacoco
-          context: sonarcloud
+      # - sonarcloud:          # comentado hasta configurar SONAR_TOKEN
+      #     requires:
+      #       - checkstyle
+      #       - pmd
+      #       - jacoco
+      #     context: sonarcloud
       - package:
           requires:
-            - sonarcloud
+            - jacoco       # era: sonarcloud (descomentar cuando se active)
       - deploy:
           requires:
             - package
