@@ -15,19 +15,28 @@ executors:
       - image: cimg/openjdk:17.0
     environment:
       MAVEN_OPTS: "-Djava.awt.headless=true"
-      SONAR_PROJECT_KEY: "joaquincgp_proyecto-integrador-calidad-software"
+      # Mismas credenciales que el Jenkinsfile
+      SONAR_PROJECT_KEY: "Mattair39_ProyectoIntegrador-CalidadDeSoftware"
       SONAR_PROJECT_NAME: "ProyectoIntegrador-CalidadDeSoftware"
-      SONAR_ORGANIZATION: "joaquincgp"
+      SONAR_ORGANIZATION: "mattair39"
+      SONAR_HOST_URL: "https://sonarcloud.io"
+      # Servidor SonarQube referenciado en Jenkins como 'SonarQubeCloud'
+      SERVIDOR_SONARQUBE: "SonarQubeCloud"
 
 # ──────────────────────────────────────────────
 # Trabajos (equivalentes a los stages de Jenkins)
 # ──────────────────────────────────────────────
+# NOTA: En CircleCI el equivalente a 'credentialsId: github-token-auth'
+# se configura como variable GITHUB_TOKEN en el Project Settings o en un Context.
+# El checkout usa automáticamente el token del proyecto vinculado.
 jobs:
 
   # ── 1. Validación de Entorno ─────────────────
   validar-entorno:
     executor: java-executor
     steps:
+      # Equivalente a: git url: 'https://github.com/Mattair39/ProyectoIntegrador-CalidadDeSoftware.git'
+      # credentialsId: 'github-token-auth'
       - checkout
       - run:
           name: "Validar herramientas del entorno"
@@ -151,14 +160,17 @@ jobs:
             - maven-{{ checksum "pom.xml" }}
             - maven-
       - run:
-          name: "Análisis SonarCloud"
+          name: "Análisis SonarCloud (servidor: SonarQubeCloud)"
           command: |
             echo "Ejecutando análisis SonarCloud..."
+            # Equivalente Jenkins: withSonarQubeEnv('SonarQubeCloud')
+            # con -Dsonar.projectKey=Mattair39_ProyectoIntegrador-CalidadDeSoftware
+            #     -Dsonar.organization=mattair39
             mvn -B sonar:sonar \
               -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
               -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
               -Dsonar.organization=${SONAR_ORGANIZATION} \
-              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.host.url=${SONAR_HOST_URL} \
               -Dsonar.token=${SONAR_TOKEN}
             echo "Análisis SonarCloud enviado correctamente."
 
