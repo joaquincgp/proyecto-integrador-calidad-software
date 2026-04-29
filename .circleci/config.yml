@@ -1,0 +1,272 @@
+version: 2.1
+
+# ──────────────────────────────────────────────
+# Orbs
+# ──────────────────────────────────────────────
+orbs:
+  maven: circleci/maven@1.4.1
+
+# ──────────────────────────────────────────────
+# Variables de entorno globales
+# ──────────────────────────────────────────────
+executors:
+  java-executor:
+    docker:
+      - image: cimg/openjdk:17.0
+    environment:
+      MAVEN_OPTS: "-Djava.awt.headless=true"
+      SONAR_PROJECT_KEY: "joaquincgp_proyecto-integrador-calidad-software"
+      SONAR_PROJECT_NAME: "ProyectoIntegrador-CalidadDeSoftware"
+      SONAR_ORGANIZATION: "joaquincgp"
+
+# ──────────────────────────────────────────────
+# Trabajos (equivalentes a los stages de Jenkins)
+# ──────────────────────────────────────────────
+jobs:
+
+  # ── 1. Validación de Entorno ─────────────────
+  validar-entorno:
+    executor: java-executor
+    steps:
+      - checkout
+      - run:
+          name: "Validar herramientas del entorno"
+          command: |
+            git --version
+            java -version
+            mvn -version
+            echo "Entorno validado correctamente."
+
+  # ── 2. Build ─────────────────────────────────
+  build:
+    executor: java-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: "Compilar proyecto"
+          command: |
+            echo "Compilando proyecto en la rama ${CIRCLE_BRANCH}..."
+            mvn -B clean compile
+            echo "Build completado correctamente."
+      - save_cache:
+          key: maven-{{ checksum "pom.xml" }}
+          paths:
+            - ~/.m2
+
+  # ── 3. Tests Unitarios ────────────────────────
+  tests-unitarios:
+    executor: java-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: "Ejecutar pruebas unitarias"
+          command: |
+            echo "Ejecutando pruebas unitarias..."
+            mvn -B test
+            echo "Pruebas unitarias completadas."
+      - store_test_results:
+          path: target/surefire-reports
+      - store_artifacts:
+          path: target/surefire-reports
+          destination: surefire-reports
+
+  # ── 4a. Checkstyle (paralelo) ─────────────────
+  checkstyle:
+    executor: java-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: "Análisis de estilo con Checkstyle"
+          command: |
+            echo "Ejecutando análisis de estilo con Checkstyle..."
+            mvn -B checkstyle:check
+            echo "Checkstyle completado."
+      - store_artifacts:
+          path: target/checkstyle-result.xml
+          destination: checkstyle/checkstyle-result.xml
+      - store_artifacts:
+          path: target/site/checkstyle.html
+          destination: checkstyle/checkstyle.html
+
+  # ── 4b. PMD (paralelo) ────────────────────────
+  pmd:
+    executor: java-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: "Análisis estático con PMD"
+          command: |
+            echo "Ejecutando análisis estático con PMD..."
+            mvn -B pmd:check
+            echo "PMD completado."
+      - store_artifacts:
+          path: target/pmd.xml
+          destination: pmd/pmd.xml
+      - store_artifacts:
+          path: target/site/pmd.html
+          destination: pmd/pmd.html
+
+  # ── 4c. JaCoCo (paralelo) ─────────────────────
+  jacoco:
+    executor: java-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: "Reporte de cobertura con JaCoCo"
+          command: |
+            echo "Generando reporte de cobertura con JaCoCo..."
+            mvn -B test jacoco:report
+            echo "JaCoCo completado."
+      - store_artifacts:
+          path: target/site/jacoco
+          destination: jacoco
+
+  # ── 5. Análisis SonarQube / SonarCloud ────────
+  sonarcloud:
+    executor: java-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: "Análisis SonarCloud"
+          command: |
+            echo "Ejecutando análisis SonarCloud..."
+            mvn -B sonar:sonar \
+              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+              -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
+              -Dsonar.organization=${SONAR_ORGANIZATION} \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.token=${SONAR_TOKEN}
+            echo "Análisis SonarCloud enviado correctamente."
+
+  # ── 6. Package (solo rama main) ───────────────
+  package:
+    executor: java-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - maven-{{ checksum "pom.xml" }}
+            - maven-
+      - run:
+          name: "Empaquetar artefacto JAR"
+          command: |
+            echo "Empaquetando artefacto JAR para main..."
+            mvn -B package -DskipTests
+            echo "Empaquetado completado."
+      - store_artifacts:
+          path: target
+          destination: jar
+          # Solo archiva los .jar generados
+      - persist_to_workspace:
+          root: .
+          paths:
+            - target/*.jar
+
+  # ── 7. Deploy (solo rama main) ────────────────
+  deploy:
+    executor: java-executor
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Publicar artefacto (deploy)"
+          command: |
+            echo "Publicando artefacto para main..."
+            mkdir -p deploy
+            cp target/*.jar deploy/
+            echo "Deploy completado correctamente."
+      - store_artifacts:
+          path: deploy
+          destination: deploy
+
+# ──────────────────────────────────────────────
+# Workflows
+# ──────────────────────────────────────────────
+workflows:
+
+  # ── Pipeline para la rama develop (CI completa, sin package/deploy) ──
+  ci-develop:
+    when:
+      equal: [develop, << pipeline.git.branch >>]
+    jobs:
+      - validar-entorno
+      - build:
+          requires:
+            - validar-entorno
+      - tests-unitarios:
+          requires:
+            - build
+      - checkstyle:
+          requires:
+            - tests-unitarios
+      - pmd:
+          requires:
+            - tests-unitarios
+      - jacoco:
+          requires:
+            - tests-unitarios
+      - sonarcloud:
+          requires:
+            - checkstyle
+            - pmd
+            - jacoco
+          context: sonarcloud
+
+  # ── Pipeline completo para la rama main (CI + Package + Deploy) ──
+  ci-cd-main:
+    when:
+      equal: [main, << pipeline.git.branch >>]
+    jobs:
+      - validar-entorno
+      - build:
+          requires:
+            - validar-entorno
+      - tests-unitarios:
+          requires:
+            - build
+      - checkstyle:
+          requires:
+            - tests-unitarios
+      - pmd:
+          requires:
+            - tests-unitarios
+      - jacoco:
+          requires:
+            - tests-unitarios
+      - sonarcloud:
+          requires:
+            - checkstyle
+            - pmd
+            - jacoco
+          context: sonarcloud
+      - package:
+          requires:
+            - sonarcloud
+      - deploy:
+          requires:
+            - package
